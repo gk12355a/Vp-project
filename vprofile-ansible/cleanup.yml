@@ -1,0 +1,85 @@
+---
+- name: Cleanup all VProfile components
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Stop and disable Tomcat if exists
+      service:
+        name: tomcat
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Stop MariaDB if exists
+      service:
+        name: mariadb
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Stop RabbitMQ if exists
+      service:
+        name: rabbitmq-server
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Stop Memcached if exists
+      service:
+        name: memcached
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Remove Tomcat directory
+      file:
+        path: /opt/apache-tomcat-9.0.75
+        state: absent
+
+    - name: Remove Tomcat systemd file
+      file:
+        path: /etc/systemd/system/tomcat.service
+        state: absent
+
+    - name: Remove deployed app WAR and exploded folder
+      file:
+        path: /opt/apache-tomcat-9.0.75/webapps/
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove vprofile source code directory
+      file:
+        path: /opt/vprofile
+        state: absent
+
+    - name: Remove custom source if used
+      file:
+        path: /home/nguyenlee24/vprofile-project-local-setup
+        state: absent
+      ignore_errors: yes
+
+    - name: Remove mysql server and dependencies
+      apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+          - mysql-common
+        state: absent
+        purge: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Clean leftover dpkg locks (if any)
+      file:
+        path: /var/lib/dpkg/lock-frontend
+        state: absent
+      become: true
+      ignore_errors: yes
+
+    - name: Clean /etc/hosts changes (OPTIONAL)
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^(.*db01|mc01|rmq01)'
+        state: absent
+      become: true
+      ignore_errors: yes

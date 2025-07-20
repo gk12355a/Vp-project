@@ -1,0 +1,6 @@
+---
+- name: Reload systemd
+  command: systemctl daemon-reexec
+
+- name: Reload systemd
+  command: systemctl daemon-reload

@@ -1,0 +1,115 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - git
+      - maven
+      - openjdk-11-jdk
+    update_cache: yes
+    state: present
+
+- name: Set JAVA_HOME environment variable
+  lineinfile:
+    path: /etc/environment
+    line: 'JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64'
+    create: yes
+    state: present
+
+
+- name: Download Apache Tomcat 9.0.75
+  unarchive:
+    src: https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.75/bin/apache-tomcat-9.0.75.tar.gz
+    dest: /opt
+    remote_src: yes
+    creates: /opt/apache-tomcat-9.0.75
+
+- name: Create tomcat user
+  user:
+    name: tomcat
+    shell: /sbin/nologin
+    home: /opt/apache-tomcat-9.0.75
+    state: present
+
+- name: Set permissions for Tomcat directory
+  file:
+    path: /opt/apache-tomcat-9.0.75
+    state: directory
+    recurse: yes
+    owner: tomcat
+    group: tomcat
+    mode: '0755'
+
+- name: Ensure Tomcat bin scripts are executable
+  file:
+    path: "{{ item }}"
+    mode: '0755'
+    state: file
+  loop:
+    - /opt/apache-tomcat-9.0.75/bin/startup.sh
+    - /opt/apache-tomcat-9.0.75/bin/shutdown.sh
+
+- name: Grant log access to nguyenlee24
+  file:
+    path: /opt/apache-tomcat-9.0.75/logs
+    state: directory
+    recurse: yes
+    owner: tomcat
+    group: nguyenlee24
+    mode: '0750'
+
+
+- name: Build WAR from local source as nguyenlee24
+  command: mvn clean install -DskipTests
+  args:
+    chdir: /home/nguyenlee24/vprofile-project-main
+  become: true
+  become_user: nguyenlee24
+
+- name: Clean existing ROOT artifacts
+  file:
+    path: /opt/apache-tomcat-9.0.75/webapps/{{ item }}
+    state: absent
+  loop:
+    - ROOT
+    - ROOT.war
+
+- name: Deploy WAR file
+  copy:
+    src: /home/nguyenlee24/vprofile-project-main/target/vprofile-v2.war
+    dest: /opt/apache-tomcat-9.0.75/webapps/ROOT.war
+    remote_src: yes
+    owner: tomcat
+    group: tomcat
+    mode: '0644'
+
+- name: Create Tomcat systemd service file
+  copy:
+    dest: /etc/systemd/system/tomcat.service
+    content: |
+      [Unit]
+      Description=Apache Tomcat Web Application Container
+      After=network.target
+
+      [Service]
+      Type=forking
+      User=tomcat
+      Group=tomcat
+      Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+      Environment="CATALINA_PID=/opt/apache-tomcat-9.0.75/temp/tomcat.pid"
+      Environment="CATALINA_HOME=/opt/apache-tomcat-9.0.75"
+      Environment="CATALINA_BASE=/opt/apache-tomcat-9.0.75"
+      ExecStart=/opt/apache-tomcat-9.0.75/bin/startup.sh
+      ExecStop=/opt/apache-tomcat-9.0.75/bin/shutdown.sh
+      RestartSec=10
+      Restart=always
+
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - Reload systemd
+
+- name: Start and enable Tomcat
+  systemd:
+    name: tomcat
+    state: restarted
+    enabled: yes

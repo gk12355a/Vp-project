@@ -1,0 +1,104 @@
+---
+# 1. Cài đặt MariaDB và Git
+- name: Install MariaDB and Git
+  dnf:
+    name:
+      - mariadb-server
+      - git
+    state: present
+
+# 2. Khởi động dịch vụ MariaDB
+- name: Enable and start MariaDB service
+  service:
+    name: mariadb
+    state: started
+    enabled: true
+
+# 3. Đặt mật khẩu root lần đầu
+- name: Set MySQL root password
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    check_implicit_admin: true
+    state: present
+
+# 4. Xoá người dùng ẩn danh
+- name: Remove anonymous MySQL users
+  mysql_user:
+    name: ''
+    host_all: true
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: absent
+
+# 5. Cho phép root login từ xa (nếu cần)
+- name: Allow root login from any host
+  mysql_user:
+    name: root
+    host: '%'
+    password: "{{ mysql_root_password }}"
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+
+# 6. Xoá database test (nếu tồn tại)
+- name: Remove test database
+  mysql_db:
+    name: test
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: absent
+
+# 7. Xoá quyền truy cập vào test.*
+- name: Remove privileges on test database
+  mysql_user:
+    name: test
+    priv: 'test.*:ALL'
+    host_all: true
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: absent
+
+# 8. Tạo database accounts
+- name: Create 'accounts' database
+  mysql_db:
+    name: accounts
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+
+# 9. Tạo user app admin và phân quyền
+- name: Create 'admin' user and grant privileges
+  mysql_user:
+    name: "{{ mysql_user }}"
+    password: "{{ mysql_user_password }}"
+    priv: 'accounts.*:ALL'
+    host: '%'
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: present
+
+# 10. Clone mã nguồn vprofile
+- name: Clone vprofile project
+  git:
+    repo: https://github.com/hkhcoder/vprofile-project.git
+    dest: /opt/vprofile
+
+# 11. Import file schema SQL vào DB accounts
+- name: Import schema to accounts database
+  mysql_db:
+    name: accounts
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    state: import
+    target: /opt/vprofile/src/main/resources/db_backup.sql
+
+# 12. Mở cổng 3306 trên firewall
+- name: Open MySQL port 3306
+  firewalld:
+    port: 3306/tcp
+    permanent: true
+    state: enabled
+    immediate: true

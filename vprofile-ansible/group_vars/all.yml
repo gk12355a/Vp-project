@@ -1,0 +1,6 @@
+mysql_root_password: admin123
+mysql_user: admin
+mysql_user_password: admin123
+
+rabbitmq_user: test
+rabbitmq_password: test

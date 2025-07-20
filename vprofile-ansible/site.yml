@@ -1,0 +1,22 @@
+---
+- name: Common tasks
+  hosts: all
+  roles:
+    - common
+
+- name: Setup backend services
+  hosts: vprofile-db
+  roles:
+    - db
+    - rabbitmq
+    - memcached
+
+- name: Setup application server
+  hosts: vprofile-app
+  roles:
+    - app
+
+- name: Setup web frontend
+  hosts: vprofile-web
+  roles:
+    - web

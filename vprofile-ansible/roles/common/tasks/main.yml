@@ -1,0 +1,10 @@
+---
+- name: Update OS packages
+  package:
+    name: "*"
+    state: latest
+- name: Add hostname aliases to /etc/hosts
+  blockinfile:
+    path: /etc/hosts
+    block: |
+      192.168.23.21 db01 mc01 rmq01

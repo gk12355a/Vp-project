@@ -1,0 +1,28 @@
+---
+- name: Install RabbitMQ
+  dnf:
+    name: rabbitmq-server
+    state: present
+
+- name: Start RabbitMQ
+  service:
+    name: rabbitmq-server
+    state: started
+    enabled: true
+
+- name: Allow remote users
+  copy:
+    content: '[{rabbit, [{loopback_users, []}]}].'
+    dest: /etc/rabbitmq/rabbitmq.config
+
+- name: Add test user
+  shell: |
+    rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }} || true
+    rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator
+
+- name: Open port
+  firewalld:
+    port: 5672/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
