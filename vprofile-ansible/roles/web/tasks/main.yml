@@ -10,7 +10,7 @@
     dest: /etc/nginx/sites-available/vproapp
     content: |
       upstream vproapp {
-          server 192.168.23.22:8080;
+          server 192.168.23.12:8080;
       }
 
       server {

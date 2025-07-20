@@ -7,4 +7,4 @@
   blockinfile:
     path: /etc/hosts
     block: |
-      192.168.23.21 db01 mc01 rmq01
+      192.168.23.11 db01 mc01 rmq01
