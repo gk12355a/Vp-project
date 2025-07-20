@@ -1,24 +1,50 @@
 ---
+- name: Install EPEL release
+  dnf:
+    name: epel-release
+    state: present
+  become: yes
+
+- name: Install wget dependency
+  dnf:
+    name: wget
+    state: present
+  become: yes
+
+- name: Install RabbitMQ repository
+  dnf:
+    name: centos-release-rabbitmq-38
+    state: present
+  become: yes
+
 - name: Install RabbitMQ
   dnf:
     name: rabbitmq-server
     state: present
+    enablerepo: centos-rabbitmq-38
+  become: yes
 
 - name: Start RabbitMQ
   service:
     name: rabbitmq-server
     state: started
     enabled: true
+  become: yes
 
 - name: Allow remote users
   copy:
-    content: '[{rabbit, [{loopback_users, []}]}].'
-    dest: /etc/rabbitmq/rabbitmq.config
+    content: 'loopback_users = none'
+    dest: /etc/rabbitmq/rabbitmq.conf
+  become: yes
+  notify: Restart RabbitMQ
 
 - name: Add test user
-  shell: |
-    rabbitmqctl add_user {{ rabbitmq_user }} {{ rabbitmq_password }} || true
-    rabbitmqctl set_user_tags {{ rabbitmq_user }} administrator
+  community.rabbitmq.rabbitmq_user:
+    user: "{{ rabbitmq_user }}"
+    password: "{{ rabbitmq_password }}"
+    tags: administrator
+    state: present
+  become: yes
 
 - name: Open port
   firewalld:
@@ -26,3 +52,4 @@
     permanent: yes
     state: enabled
     immediate: yes
+  become: yes
